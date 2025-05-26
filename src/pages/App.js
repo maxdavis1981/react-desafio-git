@@ -11,33 +11,46 @@ import { Container } from './styles';
 function App() {
 
   const [currentRepo, setCurrentRepo] = useState('');
-  const [repos, setRepos] = useState([]);
-
+  const [repos, setRepos] = useState({ data: [] });
 
   const handleSearchRepo = async () => {
-
-    const {data} = await api.get(`repos/${currentRepo}`)
-
-    if(data.id){
-
-      const isExist = repos.find(repo => repo.id === data.id);
-
-      if(!isExist){
-        setRepos(prev => [...prev, data]);
-        setCurrentRepo('')
-        return
+    try {
+      const response = await api.get(`/${currentRepo}/repos`);
+      const novosRepos = response?.data;
+  
+      if (!novosRepos || novosRepos.length === 0) {
+        alert('Repositório não encontrado');
+        return;
       }
-
+  
+      // Evita duplicatas com base no id
+      const reposFiltrados = novosRepos.filter(novo =>
+        !repos.data.some(repo => repo.id === novo.id)
+      );
+  
+      // Atualiza o estado apenas com os repositórios que ainda não estavam lá
+      if (reposFiltrados.length > 0) {
+        setRepos(prev => ({
+          ...prev,
+          data: [...prev.data, ...reposFiltrados],
+        }));
+      }
+  
+      setCurrentRepo('');
+    } catch (error) {
+      console.error('Erro ao buscar repositórios:', error);
+      alert('Erro ao buscar repositórios');
     }
-    alert('Repositório não encontrado')
-
-  }
+  };
+  
 
   const handleRemoveRepo = (id) => {
     console.log('Removendo registro', id);
-
-    // utilizar filter.
-  }
+    setRepos(prevRepos => ({
+      ...prevRepos,
+      data: prevRepos.data.filter(repo => repo.id !== id)
+    }));
+  };
 
 
   return (
@@ -45,7 +58,7 @@ function App() {
       <img src={gitLogo} width={72} height={72} alt="github logo"/>
       <Input value={currentRepo} onChange={(e) => setCurrentRepo(e.target.value)} />
       <Button onClick={handleSearchRepo}/>
-      {repos.map(repo => <ItemRepo handleRemoveRepo={handleRemoveRepo} repo={repo}/>)}
+      {repos?.data?.map(repo => <ItemRepo key={repo.id}  handleRemoveRepo={handleRemoveRepo} repo={repo}/>)}
     </Container>
   );
 }
